@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 
-module Demo3
+module Config
     include Injector::ModuleInterface
 
     push 2, 'org.example.a'
