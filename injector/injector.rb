@@ -74,11 +74,11 @@ class Injector
                         @connected_modules<<key
                         raw_units=data.split(/^---\n/).tail.map{|x| YAML.load x}
                         push_units=raw_units.select{|unit| unit[1]==:push}
-                        @pushed_data.merge! push_units.map{|unit| {unit[2].last=>unit[2].first}}.reduce({}, &:merge)
                         address_unit=raw_units.select{|unit| unit[1]==:address}.last
-                        address=address_unit[2].first if address_unit
+                        address=(address_unit[2].first if address_unit) || ''
+                        @pushed_data.merge! push_units.map{|unit| {unit[2].last.sub(/^local\./, address+'.')=>unit[2].first}}.reduce({}, &:merge)
                         pull_units=raw_units.select{|unit| unit[1]==:pull}
-                        @pull_addresses+=pull_units.map{|p| p[2].first}
+                        @pull_addresses+=pull_units.map{|p| p[2].first.sub(/^local\./, address+'.')}
                         @proc_units[addr]=raw_units.select{|unit| unit.last}.map do |unit|
                             inputs_raw=unit[2].first.keys.first
                             if inputs_raw.kind_of? Array
