@@ -7,6 +7,8 @@ module OrgExample
     generate ['local.a', 'local.b'] => ['local.a', 'local.x', 'local.b'] do |a,b|
        [a+1, a, b] if a<=b
     end
+    #or
+    #enumerate ['local.a', 'local.b'] => 'local.x'
 
     filter 'local.x' => 'local.y' do |x|
         x%4!=0

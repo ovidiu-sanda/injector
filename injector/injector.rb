@@ -79,7 +79,8 @@ class Injector
                         @pushed_data.merge! push_units.map{|unit| {unit[2].last.sub(/^local\./, address+'.')=>unit[2].first}}.reduce({}, &:merge)
                         pull_units=raw_units.select{|unit| unit[1]==:pull}
                         @pull_addresses+=pull_units.map{|p| p[2].first.sub(/^local\./, address+'.')}
-                        @proc_units[addr]=raw_units.select{|unit| unit.last}.map do |unit|
+                        main_units=[:generate, :enumerate, :map, :filter, :reduce]
+                        @proc_units[addr]=raw_units.select{|unit| main_units.include? unit[1]}.map do |unit|
                             inputs_raw=unit[2].first.keys.first
                             if inputs_raw.kind_of? Array
                                 inputs=inputs_raw.map do |x|
@@ -100,9 +101,21 @@ class Injector
                             else
                                 outputs=outputs_raw.sub(/^local\./, address+'.')
                             end
-                            {type:unit[1], inputs:inputs, outputs:outputs, data:{}, proc:proc do |*args|
-                                exec_proc addr, unit[0], *args
-                            end}
+                            #enumerate preprocessor
+                            if unit[1]==:enumerate
+                                type=:generate
+                                outputs_p=[outputs]+inputs
+                                proc_p=proc do |a,b|
+                                    [a, a+1, b] if a<=b
+                                end
+                            else
+                                type=unit[1]
+                                outputs_p=outputs
+                                proc_p=proc do |*args|
+                                    exec_proc addr, unit[0], *args
+                                end
+                            end
+                            {type:type, inputs:inputs, outputs:outputs_p, data:{}, proc:proc_p}
                         end
                         @reducers+=@proc_units[addr].select{|unit| unit[:type]==:reduce}
                         @proc_units[addr].each do |unit|
