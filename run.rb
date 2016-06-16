@@ -2,5 +2,5 @@
 load 'injector/injector.rb'
 
 injector=Injector.new 8004
-injector.load_modules 'core/org.example.rb', 'core/config.rb'
+injector.load_modules 'modules/org.example.rb', 'modules/config.rb'
 injector.wait
