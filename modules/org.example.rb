@@ -2,24 +2,25 @@
 
 module OrgExample
     include Injector::ModuleInterface
+    using LibInjector
     address 'org.example'
-    
-    generate ['local.a', 'local.b'] => ['local.a', 'local.x', 'local.b'] do |a,b|
-       [a+1, a, b] if a<=b
-    end
-    #or
-    #enumerate ['local.a', 'local.b'] => 'local.x'
 
-    filter 'local.x' => 'local.y' do |x|
+    enumerate 'local.v' => 'local.x'
+    #or
+    #generate 'local.v' => ['local.v', 'local.x'] do |v|
+    #    [v.tail, v.head] if v.any?
+    #end
+
+    filter 'local.x' => 'local.x2' do |x|
         x%4!=0
     end
 
-    map 'local.y' => 'local.z' do |y|
-        y*3
+    map 'local.x2' => 'local.y' do |x2|
+        x2*3
     end
 
-    reduce ['local.z', 'local.s'=>'local.s0', 'local.p'=>'local.p0'] => ['local.s', 'local.p'] do |z,s,p|
-       [s+z, p*z]
+    reduce ['local.y', 'local.s'=>'local.s0', 'local.p'=>'local.p0'] => ['local.s', 'local.p'] do |y,s,p|
+       [s+y, p*y]
     end
 
     map ['local.s', 'local.p']=>'stdout.written_s' do |s,p|

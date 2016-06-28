@@ -25,14 +25,15 @@ class Injector
         @rsub_cap.default=[]
         @pushed_data={}
         @pull_addresses=[]
-        @unit_method=[:map, :filter, :generate, :reduce].map{|m| [m, method(m)]}.to_h
+        @main_units=[:generate, :enumerate, :map, :filter, :mapfilter, :reduce]
+        @unit_method=[:map, :filter, :mapfilter, :generate, :reduce].map{|m| [m, method(m)]}.to_h
         @exec_queue=[]
         @reducers=[]
         @logger=Logger.new STDOUT
         @logger.formatter=proc do |severity, datetime, progname, message|
             "[#{severity}] #{datetime.hour}:#{datetime.min}:#{datetime.sec} #{message}\n"
         end
-        @logger.level=Logger::INFO
+        @logger.level=Logger::DEBUG
     end
 
     def all_modules_loaded
@@ -79,8 +80,7 @@ class Injector
                         @pushed_data.merge! push_units.map{|unit| {unit[2].last.sub(/^local\./, address+'.')=>unit[2].first}}.reduce({}, &:merge)
                         pull_units=raw_units.select{|unit| unit[1]==:pull}
                         @pull_addresses+=pull_units.map{|p| p[2].first.sub(/^local\./, address+'.')}
-                        main_units=[:generate, :enumerate, :map, :filter, :reduce]
-                        @proc_units[addr]=raw_units.select{|unit| main_units.include? unit[1]}.map do |unit|
+                        @proc_units[addr]=raw_units.select{|unit| @main_units.include? unit[1]}.map do |unit|
                             inputs_raw=unit[2].first.keys.first
                             if inputs_raw.kind_of? Array
                                 inputs=inputs_raw.map do |x|
@@ -104,9 +104,9 @@ class Injector
                             #enumerate preprocessor
                             if unit[1]==:enumerate
                                 type=:generate
-                                outputs_p=[outputs]+inputs
-                                proc_p=proc do |a,b|
-                                    [a, a+1, b] if a<=b
+                                outputs_p=[inputs, outputs]
+                                proc_p=proc do |v|
+                                    [v.tail, v.head] if v.any?
                                 end
                             else
                                 type=unit[1]
@@ -246,6 +246,22 @@ class Injector
         [unit[:inputs]].flatten.each{|addr| check_unit @sub_cap[addr] if @sub_cap[addr]}
     end
 
+    def mapfilter unit
+        #execute proc and push data
+        data=unit[:proc][*[unit[:inputs]].flatten.map{|addr| unit[:data][addr]}]
+        if data
+            outputs=get_outputs unit, data
+            #remove data from unit
+            unit[:data]={}
+            outputs.each{|addr, value| push value, addr}
+        else
+            #remove data from unit
+            unit[:data]={}
+        end
+        #check if input units have all their inputs and outputs ready
+        [unit[:inputs]].flatten.each{|addr| check_unit @sub_cap[addr] if @sub_cap[addr]}
+    end
+
     def reject unit
         #execute proc and push data if condition applies
         data=unit[:proc][*[unit[:inputs]].flatten.map{|addr| unit[:data][addr]}]
@@ -339,6 +355,8 @@ class Injector
         #we execute @unit_method[type] for push, map, filter etc.
         #input data to pulls is not stored, e.g. executing a pull just removes its input data
         #special treatment for push for simplicity
+        dtf=0
+        i=0
         @pushed_data.each{|addr, data| push data, addr}
         loop do
             loop do

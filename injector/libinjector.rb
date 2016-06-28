@@ -25,6 +25,8 @@ module LibInjector
             self[1..-1]
         end
 
+        alias head first
+
         def to_enum_i
             InjectorEnum.new self
         end
